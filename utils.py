@@ -10,7 +10,7 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 def log_string(log, string):
     """打印log"""
-    log.write(string + '\n')
+    log.write(string + "\n")
     log.flush()
     print(string)
 
@@ -40,7 +40,9 @@ def init_seed(seed):
 """图相关"""
 
 
-def get_adjacency_matrix(distance_df_filename, num_of_vertices, type_='connectivity', id_filename=None):
+def get_adjacency_matrix(
+    distance_df_filename, num_of_vertices, type_="connectivity", id_filename=None
+):
     """
     :param distance_df_filename: str, csv边信息文件路径
     :param num_of_vertices:int, 节点数量
@@ -50,8 +52,10 @@ def get_adjacency_matrix(distance_df_filename, num_of_vertices, type_='connectiv
     A = np.zeros((int(num_of_vertices), int(num_of_vertices)), dtype=np.float32)
 
     if id_filename:
-        with open(id_filename, 'r') as f:
-            id_dict = {int(i): idx for idx, i in enumerate(f.read().strip().split('\n'))}  # 建立映射列表
+        with open(id_filename, "r") as f:
+            id_dict = {
+                int(i): idx for idx, i in enumerate(f.read().strip().split("\n"))
+            }  # 建立映射列表
         df = pd.read_csv(distance_df_filename)
         for row in df.values:
             if len(row) != 3:
@@ -67,15 +71,14 @@ def get_adjacency_matrix(distance_df_filename, num_of_vertices, type_='connectiv
         if len(row) != 3:
             continue
         i, j, distance = int(row[0]), int(row[1]), float(row[2])
-        if type_ == 'connectivity':
+        if type_ == "connectivity":
             A[i, j] = 1
             A[j, i] = 1
-        elif type == 'distance':
+        elif type == "distance":
             A[i, j] = 1 / distance
             A[j, i] = 1 / distance
         else:
-            raise ValueError("type_ error, must be "
-                             "connectivity or distance!")
+            raise ValueError("type_ error, must be " "connectivity or distance!")
 
     return A
 
@@ -92,7 +95,7 @@ def construct_adj(A, steps):
 
     for i in range(steps):
         """对角线代表各个时间步自己的空间图，也就是A"""
-        adj[i * N: (i + 1) * N, i * N: (i + 1) * N] = A
+        adj[i * N : (i + 1) * N, i * N : (i + 1) * N] = A
 
     for i in range(N):
         for k in range(steps - 1):
@@ -157,6 +160,7 @@ class DataLoader(object):
 
 class StandardScaler:
     """标准转换器"""
+
     def __init__(self, mean, std):
         self.mean = mean
         self.std = std
@@ -178,6 +182,7 @@ class NScaler:
 
 class MinMax01Scaler:
     """最大最小值01转换器"""
+
     def __init__(self, min, max):
         self.min = min
         self.max = max
@@ -191,18 +196,26 @@ class MinMax01Scaler:
 
 class MinMax11Scaler:
     """最大最小值11转换器"""
+
     def __init__(self, min, max):
         self.min = min
         self.max = max
 
     def transform(self, data):
-        return ((data - self.min) / (self.max - self.min)) * 2. - 1.
+        return ((data - self.min) / (self.max - self.min)) * 2.0 - 1.0
 
     def inverse_transform(self, data):
-        return ((data + 1.) / 2.) * (self.max - self.min) + self.min
+        return ((data + 1.0) / 2.0) * (self.max - self.min) + self.min
 
 
-def load_dataset(dataset_dir, normalizer, batch_size, valid_batch_size=None, test_batch_size=None, column_wise=False):
+def load_dataset(
+    dataset_dir,
+    normalizer,
+    batch_size,
+    valid_batch_size=None,
+    test_batch_size=None,
+    column_wise=False,
+):
     """
     加载数据集
     :param dataset_dir: 数据集目录
@@ -213,57 +226,57 @@ def load_dataset(dataset_dir, normalizer, batch_size, valid_batch_size=None, tes
     :param column_wise: 是指列元素的级别上进行归一，否则是全样本取值
     """
     data = {}
-    for category in ['train', 'val', 'test']:
-        cat_data = np.load(os.path.join(dataset_dir, category + '.npz'))
-        data['x_' + category] = cat_data['x']
-        data['y_' + category] = cat_data['y']
+    for category in ["train", "val", "test"]:
+        cat_data = np.load(os.path.join(dataset_dir, category + ".npz"))
+        data["x_" + category] = cat_data["x"]
+        data["y_" + category] = cat_data["y"]
 
-    if normalizer == 'max01':
+    if normalizer == "max01":
         if column_wise:
-            minimum = data['x_train'].min(axis=0, keepdims=True)
-            maximum = data['x_train'].max(axis=0, keepdims=True)
+            minimum = data["x_train"].min(axis=0, keepdims=True)
+            maximum = data["x_train"].max(axis=0, keepdims=True)
         else:
-            minimum = data['x_train'].min()
-            maximum = data['x_train'].max()
+            minimum = data["x_train"].min()
+            maximum = data["x_train"].max()
 
         scaler = MinMax01Scaler(minimum, maximum)
-        print('Normalize the dataset by MinMax01 Normalization')
+        print("Normalize the dataset by MinMax01 Normalization")
 
-    elif normalizer == 'max11':
+    elif normalizer == "max11":
         if column_wise:
-            minimum = data['x_train'].min(axis=0, keepdims=True)
-            maximum = data['x_train'].max(axis=0, keepdims=True)
+            minimum = data["x_train"].min(axis=0, keepdims=True)
+            maximum = data["x_train"].max(axis=0, keepdims=True)
         else:
-            minimum = data['x_train'].min()
-            maximum = data['x_train'].max()
+            minimum = data["x_train"].min()
+            maximum = data["x_train"].max()
 
         scaler = MinMax11Scaler(minimum, maximum)
-        print('Normalize the dataset by MinMax11 Normalization')
+        print("Normalize the dataset by MinMax11 Normalization")
 
-    elif normalizer == 'std':
+    elif normalizer == "std":
         if column_wise:
-            mean = data['x_train'].mean(axis=0, keepdims=True)  # 获得每列元素的均值、标准差
-            std = data['x_train'].std(axis=0, keepdims=True)
+            mean = data["x_train"].mean(axis=0, keepdims=True)  # 获得每列元素的均值、标准差
+            std = data["x_train"].std(axis=0, keepdims=True)
         else:
-            mean = data['x_train'].mean()
-            std = data['x_train'].std()
+            mean = data["x_train"].mean()
+            std = data["x_train"].std()
 
         scaler = StandardScaler(mean, std)
-        print('Normalize the dataset by Standard Normalization')
+        print("Normalize the dataset by Standard Normalization")
 
-    elif normalizer == 'None':
+    elif normalizer == "None":
         scaler = NScaler()
-        print('Does not normalize the dataset')
+        print("Does not normalize the dataset")
     else:
         raise ValueError
 
-    for category in ['train', 'val', 'test']:
-        data['x_' + category][..., 0] = scaler.transform(data['x_' + category][..., 0])
+    for category in ["train", "val", "test"]:
+        data["x_" + category][..., 0] = scaler.transform(data["x_" + category][..., 0])
 
-    data['train_loader'] = DataLoader(data['x_train'], data['y_train'], batch_size)
-    data['val_loader'] = DataLoader(data['x_val'], data['y_val'], valid_batch_size)
-    data['test_loader'] = DataLoader(data['x_test'], data['y_test'], test_batch_size)
-    data['scaler'] = scaler
+    data["train_loader"] = DataLoader(data["x_train"], data["y_train"], batch_size)
+    data["val_loader"] = DataLoader(data["x_val"], data["y_val"], valid_batch_size)
+    data["test_loader"] = DataLoader(data["x_test"], data["y_test"], test_batch_size)
+    data["scaler"] = scaler
 
     return data
 
@@ -275,7 +288,7 @@ def masked_mse(preds, labels, null_val=np.nan):
     if np.isnan(null_val):
         mask = ~torch.isnan(labels)
     else:
-        mask = (labels != null_val)
+        mask = labels != null_val
 
     mask = mask.float()
     mask /= torch.mean(mask)
@@ -297,7 +310,7 @@ def masked_mae(preds, labels, null_val=np.nan):
         mask = ~torch.isnan(labels)
 
     else:
-        mask = (labels != null_val)
+        mask = labels != null_val
 
     mask = mask.float()
     mask /= torch.mean(mask)
@@ -314,7 +327,7 @@ def masked_mape(preds, labels, null_val=np.nan):
     if np.isnan(null_val):
         mask = ~torch.isnan(labels)
     else:
-        mask = (labels != null_val)
+        mask = labels != null_val
 
     mask = mask.float()
     mask /= torch.mean(mask)
@@ -327,6 +340,62 @@ def masked_mape(preds, labels, null_val=np.nan):
     return torch.mean(loss)
 
 
+def masked_mae_torch(preds, labels, null_val=np.nan, mask_value=None):
+    if mask_value is not None:
+        labels[torch.abs(labels) < mask_value] = 0
+    if np.isnan(null_val):
+        mask = ~torch.isnan(labels)
+    else:
+        mask = labels.ne(null_val)
+    mask = mask.float()
+    mask /= torch.mean(mask)
+    mask = torch.where(torch.isnan(mask), torch.zeros_like(mask), mask)
+
+    loss = torch.abs(torch.sub(preds, labels))
+    loss = loss * mask
+    loss = torch.where(torch.isnan(loss), torch.zeros_like(loss), loss)
+
+    return torch.mean(loss)
+
+
+def masked_mape_torch(preds, labels, null_val=np.nan, eps=0, mask_value=5):
+    labels[torch.abs(labels) < mask_value] = 0
+    if np.isnan(null_val) and eps != 0:
+        loss = torch.abs((preds - labels) / (labels + eps))
+        return torch.mean(loss)
+    if np.isnan(null_val):
+        mask = ~torch.isnan(labels)
+    else:
+        mask = labels.ne(null_val)
+    mask = mask.float()
+    mask /= torch.mean(mask)
+    mask = torch.where(torch.isnan(mask), torch.zeros_like(mask), mask)
+    loss = torch.abs((preds - labels) / labels)
+    loss = loss * mask
+    loss = torch.where(torch.isnan(loss), torch.zeros_like(loss), loss)
+    return torch.mean(loss)
+
+
+def masked_mse_torch(preds, labels, null_val=np.nan, mask_value=5):
+    labels[torch.abs(labels) < mask_value] = 0
+    if np.isnan(null_val):
+        mask = ~torch.isnan(labels)
+    else:
+        mask = labels.ne(null_val)
+    mask = mask.float()
+    mask /= torch.mean(mask)
+    mask = torch.where(torch.isnan(mask), torch.zeros_like(mask), mask)
+    loss = torch.square(torch.sub(preds, labels))
+    loss = loss * mask
+    loss = torch.where(torch.isnan(loss), torch.zeros_like(loss), loss)
+    return torch.mean(loss)
+
+
+def masked_rmse_torch(preds, labels, null_val=np.nan, mask_value=5):
+    labels[torch.abs(labels) < mask_value] = 0
+    return torch.sqrt(masked_mse_torch(preds=preds, labels=labels, null_val=null_val))
+
+
 def metric(pred, real):
     mae = masked_mae(pred, real, 0.0).item()
     mape = masked_mape(pred, real, 0.0).item()
@@ -335,18 +404,15 @@ def metric(pred, real):
     return mae, mape, rmse
 
 
-if __name__ == '__main__':
-    adj = get_adjacency_matrix("./data/PEMS04/PEMS04.csv", 307, id_filename=None)
-    print(adj)
-    A = construct_adj(adj, 3)
-    print(A.shape)
-    print(A)
+if __name__ == "__main__":
+    dataset = "PEMS04"
 
-    dataloader = load_dataset('./data/processed/PEMS04/', 'std', batch_size=64, valid_batch_size=64, test_batch_size=64)
-    print(dataloader)
+    adj = get_adjacency_matrix(f"./data/{dataset}/{dataset}.csv", 307, id_filename=None)
+    np.savez(f"./data/{dataset}/adj_mx.npz", adj_mx=adj)
+    # print(adj)
+    # A = construct_adj(adj, 3)
+    # print(A.shape)
+    # print(A)
 
-
-
-
-
-
+    # dataloader = load_dataset('./data/processed/PEMS04/', 'std', batch_size=64, valid_batch_size=64, test_batch_size=64)
+    # print(dataloader)

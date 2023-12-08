@@ -1,0 +1,5 @@
+**/tmp
+**/cache
+__pycache__
+garage
+data

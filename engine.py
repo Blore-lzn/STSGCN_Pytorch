@@ -4,11 +4,30 @@ from model import *
 import utils
 
 
-class trainer():
-    def __init__(self, args, scaler, adj, history, num_of_vertices,
-                 in_dim, hidden_dims, first_layer_embedding_size, out_layer_dim,
-                 log, lrate, device, activation='GLU', use_mask=True, max_grad_norm=5,
-                 lr_decay=False, temporal_emb=True, spatial_emb=True, horizon=12, strides=3):
+class trainer:
+    def __init__(
+        self,
+        args,
+        scaler,
+        adj,
+        history,
+        num_of_vertices,
+        in_dim,
+        hidden_dims,
+        first_layer_embedding_size,
+        out_layer_dim,
+        log,
+        lrate,
+        device,
+        activation="GLU",
+        use_mask=True,
+        max_grad_norm=5,
+        lr_decay=False,
+        temporal_emb=True,
+        spatial_emb=True,
+        horizon=12,
+        strides=3,
+    ):
         """
         训练器
         :param args: 参数脚本
@@ -47,7 +66,7 @@ class trainer():
             temporal_emb=temporal_emb,
             spatial_emb=spatial_emb,
             horizon=horizon,
-            strides=strides
+            strides=strides,
         )
 
         if torch.cuda.device_count() > 1:
@@ -57,20 +76,33 @@ class trainer():
 
         self.model_parameters_init()
 
-        self.optimizer = optim.Adam(self.model.parameters(), lr=lrate, eps=1.0e-8, weight_decay=0, amsgrad=False)
+        self.optimizer = optim.Adam(
+            self.model.parameters(), lr=lrate, eps=1.0e-8, weight_decay=0, amsgrad=False
+        )
 
         if lr_decay:
-            utils.log_string(log, 'Applying learning rate decay.')
-            lr_decay_steps = [int(i) for i in list(args.lr_decay_step.split(','))]
-            self.lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer=self.optimizer,
-                                                                     milestones=lr_decay_steps,
-                                                                     gamma=args.lr_decay_rate)
+            utils.log_string(log, "Applying learning rate decay.")
+            lr_decay_steps = [int(i) for i in list(args.lr_decay_step.split(","))]
+            self.lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(
+                optimizer=self.optimizer,
+                milestones=lr_decay_steps,
+                gamma=args.lr_decay_rate,
+            )
         self.loss = torch.nn.SmoothL1Loss()
         self.scaler = scaler
         self.clip = max_grad_norm
 
-        utils.log_string(log, "模型可训练参数: {:,}".format(utils.count_parameters(self.model)))
-        utils.log_string(log, 'GPU使用情况:{:,}'.format(torch.cuda.max_memory_allocated() / 1000000 if torch.cuda.is_available() else 0))
+        utils.log_string(
+            log, "模型可训练参数: {:,}".format(utils.count_parameters(self.model))
+        )
+        utils.log_string(
+            log,
+            "GPU使用情况:{:,}".format(
+                torch.cuda.max_memory_allocated() / 1000000
+                if torch.cuda.is_available()
+                else 0
+            ),
+        )
 
     def model_parameters_init(self):
         for p in self.model.parameters():
@@ -94,6 +126,7 @@ class trainer():
         predict = self.scaler.inverse_transform(output)  # B, T, N
 
         loss = self.loss(predict, real_val)
+        # raise ValueError(f"{predict.shape} {real_val.shape}")
         loss.backward()
 
         if self.clip is not None:
@@ -124,5 +157,3 @@ class trainer():
         rmse = utils.masked_rmse(predict, real_val, 0.0).item()
 
         return mae, mape, rmse
-
-

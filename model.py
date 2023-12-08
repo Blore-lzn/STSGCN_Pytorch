@@ -4,7 +4,7 @@ import torch.nn as nn
 
 
 class gcn_operation(nn.Module):
-    def __init__(self, adj, in_dim, out_dim, num_vertices, activation='GLU'):
+    def __init__(self, adj, in_dim, out_dim, num_vertices, activation="GLU"):
         """
         图卷积模块
         :param adj: 邻接图
@@ -20,9 +20,9 @@ class gcn_operation(nn.Module):
         self.num_vertices = num_vertices
         self.activation = activation
 
-        assert self.activation in {'GLU', 'relu'}
+        assert self.activation in {"GLU", "relu"}
 
-        if self.activation == 'GLU':
+        if self.activation == "GLU":
             self.FC = nn.Linear(self.in_dim, 2 * self.out_dim, bias=True)
         else:
             self.FC = nn.Linear(self.in_dim, self.out_dim, bias=True)
@@ -37,9 +37,9 @@ class gcn_operation(nn.Module):
         if mask is not None:
             adj = adj.to(mask.device) * mask
 
-        x = torch.einsum('nm, mbc->nbc', adj.to(x.device), x)  # 3*N, B, Cin
+        x = torch.einsum("nm, mbc->nbc", adj.to(x.device), x)  # 3*N, B, Cin
 
-        if self.activation == 'GLU':
+        if self.activation == "GLU":
             lhs_rhs = self.FC(x)  # 3*N, B, 2*Cout
             lhs, rhs = torch.split(lhs_rhs, self.out_dim, dim=-1)  # 3*N, B, Cout
 
@@ -48,12 +48,12 @@ class gcn_operation(nn.Module):
 
             return out
 
-        elif self.activation == 'relu':
+        elif self.activation == "relu":
             return torch.relu(self.FC(x))  # 3*N, B, Cout
 
 
 class STSGCM(nn.Module):
-    def __init__(self, adj, in_dim, out_dims, num_of_vertices, activation='GLU'):
+    def __init__(self, adj, in_dim, out_dims, num_of_vertices, activation="GLU"):
         """
         :param adj: 邻接矩阵
         :param in_dim: 输入维度
@@ -76,7 +76,7 @@ class STSGCM(nn.Module):
                 in_dim=self.in_dim,
                 out_dim=self.out_dims[0],
                 num_vertices=self.num_of_vertices,
-                activation=self.activation
+                activation=self.activation,
             )
         )
 
@@ -84,10 +84,10 @@ class STSGCM(nn.Module):
             self.gcn_operations.append(
                 gcn_operation(
                     adj=self.adj,
-                    in_dim=self.out_dims[i-1],
+                    in_dim=self.out_dims[i - 1],
                     out_dim=self.out_dims[i],
                     num_vertices=self.num_of_vertices,
-                    activation=self.activation
+                    activation=self.activation,
                 )
             )
 
@@ -105,9 +105,8 @@ class STSGCM(nn.Module):
 
         # shape of each element is (1, N, B, Cout)
         need_concat = [
-            torch.unsqueeze(
-                h[self.num_of_vertices: 2 * self.num_of_vertices], dim=0
-            ) for h in need_concat
+            torch.unsqueeze(h[self.num_of_vertices : 2 * self.num_of_vertices], dim=0)
+            for h in need_concat
         ]
 
         out = torch.max(torch.cat(need_concat, dim=0), dim=0).values  # (N, B, Cout)
@@ -118,16 +117,18 @@ class STSGCM(nn.Module):
 
 
 class STSGCL(nn.Module):
-    def __init__(self,
-                 adj,
-                 history,
-                 num_of_vertices,
-                 in_dim,
-                 out_dims,
-                 strides=3,
-                 activation='GLU',
-                 temporal_emb=True,
-                 spatial_emb=True):
+    def __init__(
+        self,
+        adj,
+        history,
+        num_of_vertices,
+        in_dim,
+        out_dims,
+        strides=3,
+        activation="GLU",
+        temporal_emb=True,
+        spatial_emb=True,
+    ):
         """
         :param adj: 邻接矩阵
         :param history: 输入时间步长
@@ -159,16 +160,20 @@ class STSGCL(nn.Module):
                     in_dim=self.in_dim,
                     out_dims=self.out_dims,
                     num_of_vertices=self.num_of_vertices,
-                    activation=self.activation
+                    activation=self.activation,
                 )
             )
 
         if self.temporal_emb:
-            self.temporal_embedding = nn.Parameter(torch.FloatTensor(1, self.history, 1, self.in_dim))
+            self.temporal_embedding = nn.Parameter(
+                torch.FloatTensor(1, self.history, 1, self.in_dim)
+            )
             # 1, T, 1, Cin
 
         if self.spatial_emb:
-            self.spatial_embedding = nn.Parameter(torch.FloatTensor(1, 1, self.num_of_vertices, self.in_dim))
+            self.spatial_embedding = nn.Parameter(
+                torch.FloatTensor(1, 1, self.num_of_vertices, self.in_dim)
+            )
             # 1, 1, N, Cin
 
         self.reset()
@@ -196,14 +201,20 @@ class STSGCL(nn.Module):
         batch_size = x.shape[0]
 
         for i in range(self.history - self.strides + 1):
-            t = x[:, i: i+self.strides, :, :]  # (B, 3, N, Cin)
+            t = x[:, i : i + self.strides, :, :]  # (B, 3, N, Cin)
 
-            t = torch.reshape(t, shape=[batch_size, self.strides * self.num_of_vertices, self.in_dim])
+            t = torch.reshape(
+                t, shape=[batch_size, self.strides * self.num_of_vertices, self.in_dim]
+            )
             # (B, 3*N, Cin)
 
-            t = self.STSGCMS[i](t.permute(1, 0, 2), mask)  # (3*N, B, Cin) -> (N, B, Cout)
+            t = self.STSGCMS[i](
+                t.permute(1, 0, 2), mask
+            )  # (3*N, B, Cin) -> (N, B, Cout)
 
-            t = torch.unsqueeze(t.permute(1, 0, 2), dim=1)  # (N, B, Cout) -> (B, N, Cout) ->(B, 1, N, Cout)
+            t = torch.unsqueeze(
+                t.permute(1, 0, 2), dim=1
+            )  # (N, B, Cout) -> (B, N, Cout) ->(B, 1, N, Cout)
 
             need_concat.append(t)
 
@@ -215,8 +226,7 @@ class STSGCL(nn.Module):
 
 
 class output_layer(nn.Module):
-    def __init__(self, num_of_vertices, history, in_dim,
-                 hidden_dim=128, horizon=12):
+    def __init__(self, num_of_vertices, history, in_dim, hidden_dim=128, horizon=12):
         """
         预测层，注意在作者的实验中是对每一个预测时间step做处理的，也即他会令horizon=1
         :param num_of_vertices:节点数
@@ -232,9 +242,13 @@ class output_layer(nn.Module):
         self.hidden_dim = hidden_dim
         self.horizon = horizon
 
+        self.output_dim = 2  # TODO
+
         self.FC1 = nn.Linear(self.in_dim * self.history, self.hidden_dim, bias=True)
 
-        self.FC2 = nn.Linear(self.hidden_dim, self.horizon, bias=True)
+        self.FC2 = nn.Linear(
+            self.hidden_dim, self.horizon * self.output_dim, bias=True
+        )  # TODO
 
     def forward(self, x):
         """
@@ -248,17 +262,32 @@ class output_layer(nn.Module):
         out1 = torch.relu(self.FC1(x.reshape(batch_size, self.num_of_vertices, -1)))
         # (B, N, Tin, Cin) -> (B, N, Tin * Cin) -> (B, N, hidden)
 
-        out2 = self.FC2(out1)  # (B, N, hidden) -> (B, N, horizon)
+        out2 = self.FC2(out1).reshape(
+            (-1, self.num_of_vertices, self.horizon, self.output_dim)
+        )  # (B, N, hidden) -> (B, N, horizon)
 
         del out1, batch_size
 
-        return out2.permute(0, 2, 1)  # B, horizon, N
+        return out2.permute(0, 2, 1, 3)  # B, horizon, N
 
 
 class STSGCN(nn.Module):
-    def __init__(self, adj, history, num_of_vertices, in_dim, hidden_dims,
-                 first_layer_embedding_size, out_layer_dim, activation='GLU', use_mask=True,
-                 temporal_emb=True, spatial_emb=True, horizon=12, strides=3):
+    def __init__(
+        self,
+        adj,
+        history,
+        num_of_vertices,
+        in_dim,
+        hidden_dims,
+        first_layer_embedding_size,
+        out_layer_dim,
+        activation="GLU",
+        use_mask=True,
+        temporal_emb=True,
+        spatial_emb=True,
+        horizon=12,
+        strides=3,
+    ):
         """
 
         :param adj: local时空间矩阵
@@ -300,12 +329,12 @@ class STSGCN(nn.Module):
                 strides=self.strides,
                 activation=self.activation,
                 temporal_emb=self.temporal_emb,
-                spatial_emb=self.spatial_emb
+                spatial_emb=self.spatial_emb,
             )
         )
 
         in_dim = self.hidden_dims[0][-1]
-        history -= (self.strides - 1)
+        history -= self.strides - 1
 
         for idx, hidden_list in enumerate(self.hidden_dims):
             if idx == 0:
@@ -320,11 +349,11 @@ class STSGCN(nn.Module):
                     strides=self.strides,
                     activation=self.activation,
                     temporal_emb=self.temporal_emb,
-                    spatial_emb=self.spatial_emb
+                    spatial_emb=self.spatial_emb,
                 )
             )
 
-            history -= (self.strides - 1)
+            history -= self.strides - 1
             in_dim = hidden_list[-1]
 
         self.predictLayer = nn.ModuleList()
@@ -335,7 +364,7 @@ class STSGCN(nn.Module):
                     history=history,
                     in_dim=in_dim,
                     hidden_dim=out_layer_dim,
-                    horizon=1
+                    horizon=1,
                 )
             )
 
@@ -368,37 +397,3 @@ class STSGCN(nn.Module):
         del need_concat
 
         return out
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

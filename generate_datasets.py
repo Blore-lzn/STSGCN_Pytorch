@@ -4,9 +4,7 @@ import os
 import pandas as pd
 
 
-def generate_graph_seq2seq_io_data(
-        data, x_offsets, y_offsets
-):
+def generate_graph_seq2seq_io_data(data, x_offsets, y_offsets):
     """
     生成seq2seq样本数据
     :param data: np数据 [B, N, D] 其中D为3
@@ -36,7 +34,7 @@ def generate_graph_seq2seq_io_data(
 
 def generate_train_val_test(args):
     """生成数据"""
-    data_seq = np.load(args.traffic_df_filename)['data']
+    data_seq = np.load(args.traffic_df_filename)["data"]
     # 交通数据 (sequence_length, num_of_vertices, num_of_features)
 
     seq_length_x, seq_length_y = args.seq_length_x, args.seq_length_y
@@ -44,7 +42,9 @@ def generate_train_val_test(args):
     x_offsets = np.arange(-(seq_length_x - 1), 1, 1)
     y_offsets = np.arange(args.y_start, (seq_length_y + 1), 1)
 
-    x, y = generate_graph_seq2seq_io_data(data=data_seq, x_offsets=x_offsets, y_offsets=y_offsets)
+    x, y = generate_graph_seq2seq_io_data(
+        data=data_seq, x_offsets=x_offsets, y_offsets=y_offsets
+    )
 
     # [B, T, N ,C]
 
@@ -59,12 +59,15 @@ def generate_train_val_test(args):
     x_train, y_train = x[:num_train], y[:num_train]
 
     # 验证集
-    x_val, y_val = x[num_train:num_train + num_val], y[num_train:num_train + num_val]
+    x_val, y_val = (
+        x[num_train : num_train + num_val],
+        y[num_train : num_train + num_val],
+    )
 
     # 测试集
-    x_test, y_test = x[num_train + num_val:], y[num_train + num_val:]
+    x_test, y_test = x[num_train + num_val :], y[num_train + num_val :]
 
-    for cat in ['train', 'val', 'test']:
+    for cat in ["train", "val", "test"]:
         _x, _y = locals()["x_" + cat], locals()["y_" + cat]
         # local() 是当前def中的所有变量构成的字典
 
@@ -74,24 +77,32 @@ def generate_train_val_test(args):
             os.path.join(args.output_dir, f"{cat}.npz"),
             x=_x,
             y=_y,
-            x_offsets=x_offsets.reshape(list(x_offsets.shape) + [1]),  # shape从原来的(12,) 转为(12,1)
-            y_offsets=y_offsets.reshape(list(y_offsets.shape) + [1]),  # shape从原来的(12,) 转为(12,1)
+            x_offsets=x_offsets.reshape(
+                list(x_offsets.shape) + [1]
+            ),  # shape从原来的(12,) 转为(12,1)
+            y_offsets=y_offsets.reshape(
+                list(y_offsets.shape) + [1]
+            ),  # shape从原来的(12,) 转为(12,1)
         )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--output_dir', type=str, default="data/processed/PEMS08/", help="输出文件夹")
-    parser.add_argument('--traffic_df_filename', type=str, default="data/PEMS08/PEMS08.npz", help="数据集")
-    parser.add_argument('--seq_length_x', type=int, default=12, help='输入序列长度')
-    parser.add_argument('--seq_length_y', type=int, default=12, help='输出序列长度')
-    parser.add_argument('--y_start', type=int, default=1, help='从第几天开始预测')
+    parser.add_argument(
+        "--output_dir", type=str, default="data/processed/PEMS08/", help="输出文件夹"
+    )
+    parser.add_argument(
+        "--traffic_df_filename", type=str, default="data/PEMS08/PEMS08.npz", help="数据集"
+    )
+    parser.add_argument("--seq_length_x", type=int, default=12, help="输入序列长度")
+    parser.add_argument("--seq_length_y", type=int, default=1, help="输出序列长度")
+    parser.add_argument("--y_start", type=int, default=1, help="从第几天开始预测")
 
     args = parser.parse_args()
 
     if os.path.exists(args.output_dir):
-        reply = str(input(f'{args.output_dir} 存在，是否将其作为输出目录?(y/n)')).lower().strip()
-        if reply[0] != 'y':
+        reply = str(input(f"{args.output_dir} 存在，是否将其作为输出目录?(y/n)")).lower().strip()
+        if reply[0] != "y":
             exit()
     else:
         os.makedirs(args.output_dir)
@@ -111,5 +122,3 @@ train x:  (10700, 12, 170, 1) y: (10700, 12, 170, 1)
 val x:  (3566, 12, 170, 1) y: (3566, 12, 170, 1)
 test x:  (3567, 12, 170, 1) y: (3567, 12, 170, 1)
 """
-
-
